@@ -1,6 +1,6 @@
 # Unity Notes
 
-`WebTransport.Client` targets `.NET Standard 2.1` and does not expose Unity-specific APIs.
+`Demiurgos.WebTransport.Client` targets `.NET Standard 2.1` and does not expose Unity-specific APIs.
 
 Unity consumers should prefer the generated UPM package at:
 

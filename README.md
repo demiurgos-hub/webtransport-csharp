@@ -1,6 +1,6 @@
 # WebTransport C# Client
 
-`WebTransport.Client` is a general-purpose C# WebTransport client package targeting `.NET Standard 2.1`.
+`Demiurgos.WebTransport.Client` is a general-purpose C# WebTransport client package targeting `.NET Standard 2.1`.
 
 The package is designed to be usable from ordinary C# projects and Unity without exposing Unity-specific APIs.
 
@@ -32,8 +32,8 @@ WebTransportDatagram datagram = await session.ReceiveDatagramAsync();
 
 ## Packages
 
-- `WebTransport.Client`: public API for C# consumers.
-- `WebTransport.Native`: native loader and ABI wrapper.
+- `Demiurgos.WebTransport.Client`: public API for C# consumers.
+- `Demiurgos.WebTransport.Native`: native loader and ABI wrapper.
 - `io.demiurgos.webtransport`: Unity Package Manager package assembled from the same managed and native release artifacts.
 
 The current release-supported NuGet native runtime layout is:

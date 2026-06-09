@@ -5,18 +5,18 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
-    <Version>0.2.0</Version>
+    <Version>0.2.1</Version>
     <PackageVersion>$(Version)</PackageVersion>
-    <RepositoryUrl>https://github.com/demiurgos/webtransport-csharp</RepositoryUrl>
+    <RepositoryUrl>https://github.com/demiurgos-hub/webtransport-csharp</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <PackageProjectUrl>https://github.com/demiurgos/webtransport-csharp</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/demiurgos-hub/webtransport-csharp</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>webtransport;quic;http3;unity;native;client</PackageTags>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <Authors>Demiurgos</Authors>
+    <Authors>Jacopo Pietro Gallelli</Authors>
     <Company>Demiurgos B.V.</Company>
     <NoWarn>$(NoWarn);1591</NoWarn>
   </PropertyGroup>

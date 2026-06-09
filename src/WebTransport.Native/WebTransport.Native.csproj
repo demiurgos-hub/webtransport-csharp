@@ -3,8 +3,8 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>WebTransport.Native</AssemblyName>
     <RootNamespace>WebTransport.Native</RootNamespace>
-    <PackageId>WebTransport.Native</PackageId>
-    <Description>Native backend loader and ABI bindings for WebTransport.Client.</Description>
+    <PackageId>Demiurgos.WebTransport.Native</PackageId>
+    <Description>Native backend loader and ABI bindings for Demiurgos.WebTransport.Client.</Description>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <IsPackable>true</IsPackable>

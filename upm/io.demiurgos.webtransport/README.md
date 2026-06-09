@@ -7,7 +7,7 @@
 Use Unity Package Manager and add this package from a Git URL that points at the package subfolder:
 
 ```text
-https://github.com/demiurgos/webtransport-csharp.git?path=/upm/io.demiurgos.webtransport
+https://github.com/demiurgos-hub/webtransport-csharp.git?path=/upm/io.demiurgos.webtransport
 ```
 
 For release artifacts, prefer the generated package under `artifacts/upm/io.demiurgos.webtransport` because it contains the built managed assemblies and native plugins.

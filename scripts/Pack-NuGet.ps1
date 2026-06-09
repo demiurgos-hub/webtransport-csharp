@@ -64,20 +64,20 @@ function Assert-PackageEntry {
     }
 }
 
-$nativePackage = Get-ChildItem -Path $OutputDirectory -Filter "WebTransport.Native.*.nupkg" |
+$nativePackage = Get-ChildItem -Path $OutputDirectory -Filter "Demiurgos.WebTransport.Native.*.nupkg" |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
 
-$clientPackage = Get-ChildItem -Path $OutputDirectory -Filter "WebTransport.Client.*.nupkg" |
+$clientPackage = Get-ChildItem -Path $OutputDirectory -Filter "Demiurgos.WebTransport.Client.*.nupkg" |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
 
 if (-not $nativePackage) {
-    throw "WebTransport.Native package was not produced."
+    throw "Demiurgos.WebTransport.Native package was not produced."
 }
 
 if (-not $clientPackage) {
-    throw "WebTransport.Client package was not produced."
+    throw "Demiurgos.WebTransport.Client package was not produced."
 }
 
 Assert-PackageEntry -PackagePath $nativePackage.FullName -EntryPattern "lib/netstandard2.1/WebTransport.Native.dll" -Description "managed native wrapper"

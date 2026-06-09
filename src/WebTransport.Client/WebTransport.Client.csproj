@@ -3,7 +3,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>WebTransport.Client</AssemblyName>
     <RootNamespace>WebTransport</RootNamespace>
-    <PackageId>WebTransport.Client</PackageId>
+    <PackageId>Demiurgos.WebTransport.Client</PackageId>
     <Description>A Unity-compatible .NET Standard 2.1 WebTransport client for streams and datagrams.</Description>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <IsPackable>true</IsPackable>
