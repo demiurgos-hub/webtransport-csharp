@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\WebTransport.Client\WebTransport.Client.csproj" />
+    <ProjectReference Include="..\..\src\WebTransport.Native\WebTransport.Native.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\native\webtransport_native\wt_http3.c" Link="Native\wt_http3.c" />
+    <None Include="..\..\native\webtransport_native\wt_http3.h" Link="Native\wt_http3.h" />
+    <None Include="..\..\native\webtransport_native\webtransport_native.h" Link="Native\webtransport_native.h" />
+  </ItemGroup>
+</Project>

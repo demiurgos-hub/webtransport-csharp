@@ -1,0 +1,86 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Aa]rtifacts/
+
+# Test results, coverage, and diagnostics
+[Tt]est[Rr]esults/
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+coverage-*/
+coverage.cobertura.xml
+*.opencover.xml
+*.vsp
+*.vspx
+
+# NuGet packages and restore caches
+*.nupkg
+*.snupkg
+packages/
+!**/packages/build/
+!**/packages/repositories.config
+
+# Native build systems and generated binaries
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+Testing/
+_deps/
+*.dll
+*.exe
+*.dylib
+*.so
+*.a
+*.lib
+*.exp
+*.obj
+*.pdb
+*.ilk
+*.iobj
+*.ipdb
+*.tlog
+*.recipe
+*.lastbuildstate
+!runtimes/**/*.dll
+!runtimes/**/*.dylib
+!runtimes/**/*.so
+!runtimes/**/*.a
+
+# vcpkg generated files
+vcpkg_installed/
+vcpkg-manifest-install.log
+vcpkg-bootstrap.log
+
+# IDE and editor state
+.vs/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/settings.json
+!.vscode/tasks.json
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+.idea/
+*.code-workspace
+
+# Local environment and machine-specific files
+.env
+.env.*
+!.env.example
+*.local
+
+# Local NuGet publish scripts
+scripts/build-nuget-release.bat
+scripts/push-nuget.bat
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini

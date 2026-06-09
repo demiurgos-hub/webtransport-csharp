@@ -1,0 +1,158 @@
+name: packages
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  managed:
+    name: Managed tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Test
+        run: dotnet test WebTransport.sln -c Release
+
+  native-protocol:
+    name: Native protocol tests
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Setup MSVC developer command prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgJsonGlob: vcpkg.json
+
+      - name: Build native test-hooks library
+        shell: pwsh
+        env:
+          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
+        run: ./scripts/build-native.ps1 -Preset windows-msquic
+
+      - name: Build interop tests
+        run: dotnet build tests/WebTransport.Interop.Tests/WebTransport.Interop.Tests.csproj -c Release
+
+      - name: Stage native test library
+        shell: pwsh
+        run: |
+          Copy-Item `
+            artifacts/native-build-msquic/native/webtransport_native/Release/webtransport_native.dll `
+            tests/WebTransport.Interop.Tests/bin/Release/net8.0/ `
+            -Force
+
+      - name: Run native protocol tests
+        run: dotnet test tests/WebTransport.Interop.Tests/WebTransport.Interop.Tests.csproj -c Release --no-build --filter FullyQualifiedName~NativeProtocolTests
+
+  native-linux:
+    name: Native Linux build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Ninja
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgJsonGlob: vcpkg.json
+
+      - name: Configure native
+        env:
+          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
+        run: cmake --preset linux-msquic
+
+      - name: Build native
+        run: cmake --build --preset linux-msquic
+
+  package:
+    name: Package artifacts
+    runs-on: windows-latest
+    needs:
+      - managed
+      - native-protocol
+      - native-linux
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Setup MSVC developer command prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgJsonGlob: vcpkg.json
+
+      - name: Build packages
+        shell: pwsh
+        env:
+          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
+        run: ./scripts/Build-Packages.ps1 -Configuration Release -NativePreset windows-msquic-release -Rid win-x64
+
+      - name: Upload NuGet artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: |
+            artifacts/nuget/*.nupkg
+            artifacts/nuget/*.snupkg
+
+      - name: Upload UPM package
+        uses: actions/upload-artifact@v4
+        with:
+          name: upm-package
+          path: artifacts/upm/io.demiurgos.webtransport
+
+      - name: Publish NuGet packages
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:NUGET_API_KEY)) {
+            throw "NUGET_API_KEY secret is required to publish packages."
+          }
+
+          dotnet nuget push "artifacts/nuget/*.nupkg" `
+            --api-key "$env:NUGET_API_KEY" `
+            --source "https://api.nuget.org/v3/index.json" `
+            --skip-duplicate

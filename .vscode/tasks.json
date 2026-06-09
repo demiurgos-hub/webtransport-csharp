@@ -1,0 +1,44 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build",
+      "type": "process",
+      "command": "cmd",
+      "args": [
+        "/d",
+        "/c",
+        "${workspaceFolder}\\scripts\\build-nuget-release.bat"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true
+      },
+      "group": "build"
+    },
+    {
+      "label": "Push NuGet Build",
+      "type": "process",
+      "command": "cmd",
+      "args": [
+        "/d",
+        "/c",
+        "${workspaceFolder}\\scripts\\push-nuget.bat"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true
+      }
+    }
+  ]
+}

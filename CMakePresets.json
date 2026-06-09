@@ -1,0 +1,74 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "windows-msquic",
+      "displayName": "Windows MsQuic native build",
+      "description": "Builds the native library with MsQuic restored by vcpkg manifest mode.",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/artifacts/native-build-msquic",
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_MANIFEST_DIR": "${sourceDir}",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "WT_ENABLE_TEST_HOOKS": "ON"
+      }
+    },
+    {
+      "name": "windows-msquic-release",
+      "displayName": "Windows MsQuic release native build",
+      "description": "Builds the releasable native library with MsQuic and without test hooks.",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/artifacts/native-build-msquic-release",
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_MANIFEST_DIR": "${sourceDir}",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "WT_ENABLE_TEST_HOOKS": "OFF"
+      }
+    },
+    {
+      "name": "linux-msquic",
+      "displayName": "Linux MsQuic native build",
+      "description": "Builds the native library with MsQuic restored by vcpkg manifest mode on Linux.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/artifacts/native-build-msquic-linux",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_MANIFEST_DIR": "${sourceDir}",
+        "VCPKG_TARGET_TRIPLET": "x64-linux",
+        "WT_ENABLE_TEST_HOOKS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-msquic",
+      "configurePreset": "windows-msquic",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-msquic-release",
+      "configurePreset": "windows-msquic-release",
+      "configuration": "Release"
+    },
+    {
+      "name": "linux-msquic",
+      "configurePreset": "linux-msquic",
+      "configuration": "Release"
+    }
+  ]
+}

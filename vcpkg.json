@@ -1,0 +1,7 @@
+{
+  "name": "webtransport-csharp-native",
+  "version-string": "0.1.3",
+  "dependencies": [
+    "msquic"
+  ]
+}

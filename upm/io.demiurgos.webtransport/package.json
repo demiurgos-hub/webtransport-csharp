@@ -1,0 +1,21 @@
+{
+  "name": "io.demiurgos.webtransport",
+  "version": "0.1.3",
+  "displayName": "WebTransport",
+  "description": "Unity-compatible WebTransport client for streams and datagrams.",
+  "unity": "2021.3",
+  "license": "MIT",
+  "author": {
+    "name": "Demiurgos"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/demiurgos/webtransport-csharp.git"
+  },
+  "keywords": [
+    "webtransport",
+    "quic",
+    "http3",
+    "networking"
+  ]
+}
