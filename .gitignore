@@ -69,6 +69,7 @@ vcpkg-bootstrap.log
 *.sln.docstates
 .idea/
 *.code-workspace
+.cursor/rules/*.local.mdc
 
 # Local environment and machine-specific files
 .env
