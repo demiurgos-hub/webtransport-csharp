@@ -779,7 +779,10 @@ static QUIC_STATUS QUIC_API wt_msquic_connection_callback(
     }
 
     if (event->Type == QUIC_CONNECTION_EVENT_DATAGRAM_SEND_STATE_CHANGED) {
-        if (event->DATAGRAM_SEND_STATE_CHANGED.State != QUIC_DATAGRAM_SEND_SENT) {
+        // Free only on terminal states. LOST_SUSPECT is not terminal: it can
+        // be followed by ACKNOWLEDGED_SPURIOUS or LOST_DISCARDED, so freeing
+        // on any non-SENT state double-freed the send context under loss.
+        if (QUIC_DATAGRAM_SEND_STATE_IS_FINAL(event->DATAGRAM_SEND_STATE_CHANGED.State)) {
             wt_msquic_free_send_context(event->DATAGRAM_SEND_STATE_CHANGED.ClientContext);
         }
 
@@ -864,14 +867,15 @@ static QUIC_STATUS QUIC_API wt_msquic_connection_callback(
         }
 
         case QUIC_CONNECTION_EVENT_DATAGRAM_RECEIVED: {
-            wt_status datagram_status = wt_msquic_deliver_datagram(
+            // A failed delivery is never session-fatal. Datagrams are
+            // best-effort (RFC 9221): one that arrives before the session is
+            // fully set up, overflows the receive queue, or fails to decode is
+            // simply dropped. Escalating here used to tear down the entire
+            // session when the server's first datagram won a startup race.
+            (void)wt_msquic_deliver_datagram(
                 wt_context,
                 event->DATAGRAM_RECEIVED.Buffer->Buffer,
                 event->DATAGRAM_RECEIVED.Buffer->Length);
-            if (datagram_status != WT_STATUS_OK) {
-                wt_msquic_emit_error(wt_context, WT_STATUS_PROTOCOL_ERROR, 0);
-            }
-
             return QUIC_STATUS_SUCCESS;
         }
 

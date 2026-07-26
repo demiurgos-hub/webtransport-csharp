@@ -29,30 +29,38 @@ namespace WebTransport
             ThrowIfDisposed();
             cancellationToken.ThrowIfCancellationRequested();
 
+            // Loop until data arrives or the stream is genuinely closed. A
+            // completed waiter is only a hint: it can be triggered by a stale
+            // data event whose bytes an earlier read already consumed, so a
+            // single post-wait read may legitimately return 0 while the stream
+            // is still open. Returning that 0 would be a spurious EOF, which
+            // intermittently tore down consumers during connection startup
+            // bursts. 0 is returned only once the stream is marked closed.
             if (buffer.Length == 0)
             {
                 return 0;
             }
 
-            int bytesRead = InvokeNative(() => _native.ReadStream(_streamId, buffer.Span));
-            if (bytesRead != 0 || _events.IsStreamClosed(_streamId))
+            while (true)
             {
-                return bytesRead;
-            }
-
-            using (NativeEventCoordinator.NativeEventWaiter waiter = _events.RegisterStreamDataWaiter(_streamId, cancellationToken))
-            {
-                bytesRead = InvokeNative(() => _native.ReadStream(_streamId, buffer.Span));
+                int bytesRead = InvokeNative(() => _native.ReadStream(_streamId, buffer.Span));
                 if (bytesRead != 0 || _events.IsStreamClosed(_streamId))
                 {
                     return bytesRead;
                 }
 
-                await waiter.Task.ConfigureAwait(false);
-            }
+                using (NativeEventCoordinator.NativeEventWaiter waiter = _events.RegisterStreamDataWaiter(_streamId, cancellationToken))
+                {
+                    bytesRead = InvokeNative(() => _native.ReadStream(_streamId, buffer.Span));
+                    if (bytesRead != 0 || _events.IsStreamClosed(_streamId))
+                    {
+                        return bytesRead;
+                    }
 
-            cancellationToken.ThrowIfCancellationRequested();
-            return InvokeNative(() => _native.ReadStream(_streamId, buffer.Span));
+                    await waiter.Task.ConfigureAwait(false);
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+            }
         }
 
         public ValueTask WriteAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)

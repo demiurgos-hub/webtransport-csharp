@@ -26,7 +26,9 @@ function Get-PackageVersion {
     [xml]$props = Get-Content -Path (Join-Path $RepositoryRoot "Directory.Build.props")
     $version = $props.Project.PropertyGroup.PackageVersion
 
-    if ([string]::IsNullOrWhiteSpace($version)) {
+    # PackageVersion is typically the unevaluated MSBuild macro "$(Version)",
+    # so fall through to the literal Version element in that case too.
+    if ([string]::IsNullOrWhiteSpace($version) -or $version.Contains('$(')) {
         $version = $props.Project.PropertyGroup.Version
     }
 
