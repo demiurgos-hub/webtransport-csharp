@@ -14,7 +14,7 @@
 extern "C" {
 #endif
 
-#define WT_ABI_VERSION 1u
+#define WT_ABI_VERSION 2u
 
 typedef enum wt_status {
     WT_STATUS_OK = 0,
@@ -42,7 +42,8 @@ typedef enum wt_event_type {
     WT_EVENT_STREAM_DATA_RECEIVED = 7,
     WT_EVENT_STREAM_CLOSED = 8,
     WT_EVENT_DATAGRAM_RECEIVED = 9,
-    WT_EVENT_ERROR = 10
+    WT_EVENT_ERROR = 10,
+    WT_EVENT_REMOTE_SESSION_CLOSED = 11
 } wt_event_type;
 
 typedef struct wt_connect_options {
@@ -72,6 +73,7 @@ WT_API uint32_t wt_get_abi_version(void);
 WT_API wt_status wt_client_create(uint64_t* client_id);
 WT_API wt_status wt_client_connect(uint64_t client_id, const wt_connect_options* options, uint64_t* operation_id);
 WT_API wt_status wt_client_shutdown(uint64_t client_id, uint64_t error_code);
+/* Event payload bytes remain valid until the next poll or client release. */
 WT_API wt_status wt_poll_event(uint64_t client_id, wt_event* event);
 WT_API wt_status wt_session_open_bidi_stream(uint64_t session_id, uint64_t* operation_id);
 WT_API wt_status wt_session_open_uni_stream(uint64_t session_id, uint64_t* operation_id);

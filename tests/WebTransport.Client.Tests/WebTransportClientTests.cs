@@ -154,6 +154,7 @@ public sealed class WebTransportClientTests
 
     private sealed class FakeSessionBackend : IWebTransportSessionBackend
     {
+        public Task<WebTransportCloseInfo> CloseCompletion { get; } = new TaskCompletionSource<WebTransportCloseInfo>().Task;
         public FakeStreamBackend Stream { get; } = new FakeStreamBackend();
 
         public List<byte[]> SentDatagrams { get; } = new List<byte[]>();

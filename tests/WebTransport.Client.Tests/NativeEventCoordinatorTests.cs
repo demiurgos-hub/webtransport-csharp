@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Runtime.InteropServices;
+using System.Text;
 using WebTransport.Native;
 using Xunit;
 
@@ -9,6 +11,55 @@ namespace WebTransport.Tests;
 
 public sealed class NativeEventCoordinatorTests
 {
+    [Theory]
+    [InlineData(0UL, "admission_denied")]
+    [InlineData(17UL, "déploiement 拒否")]
+    [InlineData(0UL, "")]
+    public async Task RemoteClosePreservesMetadataBeforeAndAfterShutdown(ulong code, string reason)
+    {
+        var source = new FakeEventSource();
+        await using var coordinator = new NativeEventCoordinator(source, TimeSpan.FromMilliseconds(1));
+        byte[] bytes = Encoding.UTF8.GetBytes(reason);
+        IntPtr pointer = Marshal.AllocHGlobal(Math.Max(1, bytes.Length));
+        try
+        {
+            Marshal.Copy(bytes, 0, pointer, bytes.Length);
+            Task<WebTransportCloseInfo> completion = coordinator.GetSessionCloseCompletion(42);
+            using var waiter = coordinator.RegisterDatagramWaiter(42, CancellationToken.None);
+            source.Enqueue(new WebTransportNativeEvent { Type = WebTransportNativeEventType.RemoteSessionClosed,
+                SessionId = 42, ErrorCode = code, Data = pointer, DataLength = (nuint)bytes.Length });
+            WebTransportCloseInfo result = await completion.WaitAsync(TimeSpan.FromSeconds(1));
+            Assert.Equal(code, result.ErrorCode);
+            Assert.Equal(reason, result.Reason);
+            await Assert.ThrowsAsync<WebTransportException>(() => waiter.Task);
+            coordinator.CloseSessionLocally(42);
+            await coordinator.DisposeAsync();
+            Assert.Same(completion, coordinator.GetSessionCloseCompletion(42));
+            Assert.Equal(reason, (await completion).Reason);
+        }
+        finally { Marshal.FreeHGlobal(pointer); }
+    }
+
+    [Fact]
+    public async Task UnreasonedCloseFaultsCompletionIncludingLateObservers()
+    {
+        var source = new FakeEventSource();
+        await using var coordinator = new NativeEventCoordinator(source, TimeSpan.FromMilliseconds(1));
+        using var waiter = coordinator.RegisterDatagramWaiter(42, CancellationToken.None);
+        source.Enqueue(new WebTransportNativeEvent { Type = WebTransportNativeEventType.SessionClosed, SessionId = 42 });
+        await Assert.ThrowsAsync<WebTransportException>(() => waiter.Task.WaitAsync(TimeSpan.FromSeconds(1)));
+        await Assert.ThrowsAsync<WebTransportException>(() => coordinator.GetSessionCloseCompletion(42));
+    }
+
+    [Fact]
+    public async Task DisposalFaultsPendingCloseCompletion()
+    {
+        var coordinator = new NativeEventCoordinator(new FakeEventSource(), TimeSpan.FromMilliseconds(1));
+        Task<WebTransportCloseInfo> completion = coordinator.GetSessionCloseCompletion(42);
+        await coordinator.DisposeAsync();
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => completion);
+    }
+
     [Fact]
     public async Task WaitForSessionConnectedAsyncCompletesAfterSessionConnectedEvent()
     {

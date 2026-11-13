@@ -76,6 +76,7 @@ typedef struct wt_client_context {
     size_t pending_event_offset;
     size_t pending_event_count;
     size_t pending_event_capacity;
+    uint8_t* last_event_data;
     uint8_t closing;
 } wt_client_context;
 
@@ -226,7 +227,16 @@ static wt_status wt_push_event(uint64_t client_id, const wt_event* event)
         context->pending_event_capacity = next_capacity;
     }
 
-    context->pending_events[context->pending_event_offset + context->pending_event_count] = *event;
+    wt_event owned_event = *event;
+    owned_event.data = NULL;
+    if (event->data_length != 0) {
+        if (event->data == NULL || event->data_length > 1024) return WT_STATUS_INVALID_ARGUMENT;
+        uint8_t* copy = (uint8_t*)malloc(event->data_length);
+        if (copy == NULL) return WT_STATUS_OUT_OF_MEMORY;
+        memcpy(copy, event->data, event->data_length);
+        owned_event.data = copy;
+    }
+    context->pending_events[context->pending_event_offset + context->pending_event_count] = owned_event;
     context->pending_event_count++;
     return WT_STATUS_OK;
 }
@@ -702,6 +712,8 @@ WT_API wt_status wt_poll_event(uint64_t client_id, wt_event* event)
     }
 
     wt_client_context* context = (wt_client_context*)client->context;
+    free(context->last_event_data);
+    context->last_event_data = NULL;
     if (context->pending_event_count == 0) {
         memset(event, 0, sizeof(*event));
         wt_unlock();
@@ -709,6 +721,7 @@ WT_API wt_status wt_poll_event(uint64_t client_id, wt_event* event)
     }
 
     *event = context->pending_events[context->pending_event_offset];
+    context->last_event_data = (uint8_t*)event->data;
     context->pending_event_offset++;
     context->pending_event_count--;
     if (context->pending_event_count == 0) {
@@ -1136,6 +1149,10 @@ WT_API void wt_release(uint64_t handle_id)
         // non-blocking and guarantees no in-flight MsQuic worker callback can
         // touch the client context after it is freed below.
         wt_msquic_shutdown(removed_msquic, 0);
+        for (size_t i = 0; i < context->pending_event_count; i++) {
+            free((void*)context->pending_events[context->pending_event_offset + i].data);
+        }
+        free(context->last_event_data);
         free(context->pending_events);
         free(context);
         // The blocking MsQuic handle close (ConnectionClose/RegistrationClose/
@@ -1151,6 +1168,26 @@ WT_API void wt_release(uint64_t handle_id)
 }
 
 #if defined(WT_ENABLE_TEST_HOOKS)
+WT_API wt_status wt_test_close_capsules(const uint8_t* data, size_t length, size_t fragment_size,
+    uint32_t* error_code, uint8_t* reason, size_t reason_capacity, size_t* reason_length)
+{
+    if (fragment_size == 0 || error_code == NULL || reason_length == NULL) return WT_STATUS_INVALID_ARGUMENT;
+    wt_close_capsule_parser parser;
+    memset(&parser, 0, sizeof(parser));
+    for (size_t offset = 0; offset < length;) {
+        size_t take = length - offset < fragment_size ? length - offset : fragment_size;
+        wt_status status = wt_http3_parse_close_capsules(&parser, data + offset, take);
+        if (status != WT_STATUS_OK) return status;
+        offset += take;
+    }
+    if (!parser.closed) return WT_STATUS_PENDING;
+    *error_code = parser.error_code;
+    *reason_length = parser.payload_length - 4;
+    if (*reason_length > reason_capacity || (reason == NULL && *reason_length != 0)) return WT_STATUS_INVALID_ARGUMENT;
+    if (*reason_length != 0) memcpy(reason, parser.payload + 4, *reason_length);
+    return WT_STATUS_OK;
+}
+
 WT_API wt_status wt_test_http3_settings_roundtrip(void)
 {
     wt_buffer buffer;

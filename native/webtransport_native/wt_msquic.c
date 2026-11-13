@@ -42,6 +42,8 @@ struct wt_msquic_context {
     char authority[320];
     wt_msquic_stream_entry* streams;
     wt_buffer request_stream_buffer;
+    wt_close_capsule_parser close_capsule;
+    uint8_t session_close_emitted;
     uint8_t* headers_utf8;
     size_t headers_length;
     uint64_t connect_stream_id;
@@ -309,6 +311,9 @@ static wt_status wt_msquic_process_request_stream(wt_msquic_context* context, co
 
     uint8_t should_emit_connected = 0;
     uint8_t should_emit_error = 0;
+    uint8_t should_emit_closed = 0;
+    wt_event close_event;
+    memset(&close_event, 0, sizeof(close_event));
     uint64_t error_code = 0;
     size_t offset = 0;
     while (offset < context->request_stream_buffer.length) {
@@ -327,11 +332,34 @@ static wt_status wt_msquic_process_request_stream(wt_msquic_context* context, co
             break;
         }
 
+        if (payload_length > WT_MAX_REQUEST_STREAM_BUFFER_BYTES) {
+            wt_msquic_unlock(context);
+            return WT_STATUS_PROTOCOL_ERROR;
+        }
         if (payload_length > SIZE_MAX ||
             offset > context->request_stream_buffer.length ||
             (size_t)payload_length > context->request_stream_buffer.length - offset) {
             offset = frame_start;
             break;
+        }
+        if (frame_type == WT_H3_FRAME_DATA && context->connect_accepted && !context->session_close_emitted) {
+            status = wt_http3_parse_close_capsules(&context->close_capsule,
+                context->request_stream_buffer.data + offset, (size_t)payload_length);
+            if (status != WT_STATUS_OK) {
+                wt_msquic_unlock(context);
+                return status;
+            }
+            if (context->close_capsule.closed) {
+                context->session_close_emitted = 1;
+                should_emit_closed = 1;
+                close_event.type = WT_EVENT_REMOTE_SESSION_CLOSED;
+                close_event.status = WT_STATUS_OK;
+                close_event.client_id = context->client_id;
+                close_event.session_id = context->session_id;
+                close_event.error_code = context->close_capsule.error_code;
+                close_event.data = context->close_capsule.payload + 4;
+                close_event.data_length = context->close_capsule.payload_length - 4;
+            }
         }
 
         if (frame_type == WT_H3_FRAME_HEADERS) {
@@ -359,9 +387,14 @@ static wt_status wt_msquic_process_request_stream(wt_msquic_context* context, co
         context->request_stream_buffer.length = remaining;
     }
 
+    wt_msquic_event_sink close_sink = context->event_sink;
+    void* close_user_data = context->event_sink_user_data;
     wt_msquic_unlock(context);
     if (should_emit_connected) {
         wt_msquic_try_emit_session_connected(context);
+    }
+    if (should_emit_closed && close_sink != NULL) {
+        close_sink(close_user_data, &close_event);
     }
 
     if (should_emit_error) {
@@ -606,6 +639,25 @@ static QUIC_STATUS QUIC_API wt_msquic_stream_callback(
                 wt_msquic_emit_error(wt_context, WT_STATUS_PROTOCOL_ERROR, 0);
             }
         }
+    }
+
+    if (stream == request_stream &&
+        (event->Type == QUIC_STREAM_EVENT_PEER_SEND_SHUTDOWN ||
+         event->Type == QUIC_STREAM_EVENT_PEER_SEND_ABORTED ||
+         event->Type == QUIC_STREAM_EVENT_SHUTDOWN_COMPLETE)) {
+        wt_event closed;
+        memset(&closed, 0, sizeof(closed));
+        wt_msquic_lock(wt_context);
+        wt_msquic_event_sink sink = wt_context->event_sink;
+        void* user_data = wt_context->event_sink_user_data;
+        uint8_t emit = !wt_context->session_close_emitted;
+        wt_context->session_close_emitted = 1;
+        closed.type = WT_EVENT_SESSION_CLOSED;
+        closed.status = WT_STATUS_TRANSPORT_ERROR;
+        closed.client_id = wt_context->client_id;
+        closed.session_id = wt_context->session_id;
+        wt_msquic_unlock(wt_context);
+        if (emit && sink != NULL) sink(user_data, &closed);
     }
 
     wt_msquic_stream_data_sink_snapshot stream_data_snapshot;

@@ -15,6 +15,7 @@ namespace WebTransport.Native
         StreamDataReceived = 7,
         StreamClosed = 8,
         DatagramReceived = 9,
-        Error = 10
+        Error = 10,
+        RemoteSessionClosed = 11
     }
 }

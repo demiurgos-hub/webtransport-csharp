@@ -30,6 +30,10 @@ WebTransportDatagram datagram = await session.ReceiveDatagramAsync();
 
 `ConnectAsync` returns only after the remote endpoint accepts the WebTransport extended CONNECT request.
 
+`session.CloseCompletion` completes with the peer's `WebTransportCloseInfo` when its close capsule arrives. This preserves a code of zero and an empty reason as valid application metadata. Transport loss, an unreasoned request-stream close, local close, or disposal faults the task. Application streams are independent QUIC streams, so their EOF/reset can precede this metadata; observe session completion when classifying a peer close. The first terminal result remains available after disposal.
+
+Custom `IWebTransportSessionBackend` implementations must provide this task. Version 0.3.0 uses native ABI 2 and rejects older native libraries instead of silently losing close metadata.
+
 ## Packages
 
 - `Demiurgos.WebTransport.Client`: public API for C# consumers.

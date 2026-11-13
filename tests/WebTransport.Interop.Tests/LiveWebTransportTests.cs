@@ -92,23 +92,16 @@ public sealed class LiveWebTransportTests
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         CancellationToken token = timeout.Token;
 
-        var client = new WebTransportClient(new WebTransportClientOptions
+        await using var client = new WebTransportClient(new WebTransportClientOptions
         {
             AllowUntrustedCertificates = true,
             ConnectTimeout = TimeSpan.FromSeconds(5)
         });
 
-        WebTransportSession session = await RunStepAsync(
+        await using WebTransportSession session = await RunStepAsync(
             "ConnectAsync",
             () => client.ConnectAsync(new Uri(url), token).AsTask());
-        await RunStepAsync(
-            "SendDatagramAsync",
-            async () =>
-            {
-                await session.SendDatagramAsync("ready"u8.ToArray(), token);
-                return true;
-            });
-        WebTransportStream stream = await RunStepAsync(
+        await using WebTransportStream stream = await RunStepAsync(
             "OpenBidirectionalStreamAsync",
             () => session.OpenBidirectionalStreamAsync(token).AsTask());
 
@@ -124,6 +117,33 @@ public sealed class LiveWebTransportTests
             "ReadGolemReliableFrameAsync",
             () => ReadGolemReliableFrameAsync(stream, token));
         Assert.Equal(GolemExpectedSnapshot, Encoding.UTF8.GetString(frame));
+    }
+
+    [Fact]
+    public async Task GolemPeerClosePreservesCodeZeroApplicationReason()
+    {
+        await using GolemServerProcess? server = await StartGolemServerIfRequestedAsync();
+        if (server == null) return;
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        await using var client = new WebTransportClient(new WebTransportClientOptions
+        {
+            AllowUntrustedCertificates = true,
+            ConnectTimeout = TimeSpan.FromSeconds(5)
+        });
+        await using var session = await client.ConnectAsync(new Uri(server.Url), timeout.Token);
+        await using var stream = await session.OpenBidirectionalStreamAsync(timeout.Token);
+        await stream.WriteAsync(new byte[4], timeout.Token);
+        Assert.Equal(GolemExpectedSnapshot, Encoding.UTF8.GetString(await ReadGolemReliableFrameAsync(stream, timeout.Token)));
+        byte[] payload = "close-me"u8.ToArray();
+        byte[] frame = new byte[payload.Length + 4];
+        BinaryPrimitives.WriteInt32BigEndian(frame, payload.Length);
+        payload.CopyTo(frame, 4);
+        await stream.WriteAsync(frame, timeout.Token);
+        WebTransportCloseInfo close = await session.CloseCompletion.WaitAsync(timeout.Token);
+        Assert.Equal(0UL, close.ErrorCode);
+        Assert.Equal("admission_denied", close.Reason);
+        await session.DisposeAsync();
+        Assert.Equal("admission_denied", (await session.CloseCompletion).Reason);
     }
 
     private async Task<T> RunStepAsync<T>(string stepName, Func<Task<T>> action)

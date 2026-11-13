@@ -12,8 +12,8 @@ import (
 	"syscall"
 	"time"
 
-	golemnet "golem-engine/golem/net"
-	"golem-engine/golem/registry"
+	golemnet "github.com/demiurgos-hub/golem-engine/golem/net"
+	"github.com/demiurgos-hub/golem-engine/golem/registry"
 )
 
 func main() {
@@ -44,6 +44,11 @@ func main() {
 	})
 	listener.SetWorldSnapshotFunc(func() ([][]byte, error) {
 		return [][]byte{[]byte("world-snapshot")}, nil
+	})
+	listener.OnMessage(func(session *golemnet.Session, payload []byte) {
+		if string(payload) == "close-me" {
+			session.RequestCloseWithReason("admission_denied")
+		}
 	})
 
 	serveErr := make(chan error, 1)

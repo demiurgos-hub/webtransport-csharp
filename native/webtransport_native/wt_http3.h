@@ -33,6 +33,21 @@ typedef struct wt_buffer {
     size_t capacity;
 } wt_buffer;
 
+/* Incremental capsule state. Unknown capsules are skipped without allocation. */
+typedef struct wt_close_capsule_parser {
+    uint8_t header[16];
+    size_t header_length;
+    uint64_t type;
+    uint64_t remaining;
+    uint8_t reading_payload;
+    uint8_t payload[1028];
+    size_t payload_length;
+    uint8_t closed;
+    uint32_t error_code;
+} wt_close_capsule_parser;
+
+wt_status wt_http3_parse_close_capsules(wt_close_capsule_parser* parser, const uint8_t* data, size_t length);
+
 void wt_buffer_init(wt_buffer* buffer);
 void wt_buffer_free(wt_buffer* buffer);
 wt_status wt_buffer_append(wt_buffer* buffer, const uint8_t* data, size_t length);

@@ -25,7 +25,10 @@ namespace WebTransport
             _native = native ?? throw new ArgumentNullException(nameof(native));
             _events = events ?? throw new ArgumentNullException(nameof(events));
             _sessionId = sessionId;
+            CloseCompletion = _events.GetSessionCloseCompletion(sessionId);
         }
+
+        public Task<WebTransportCloseInfo> CloseCompletion { get; }
 
         public ValueTask<IWebTransportStreamBackend> OpenBidirectionalStreamAsync(CancellationToken cancellationToken)
         {
@@ -100,6 +103,7 @@ namespace WebTransport
             cancellationToken.ThrowIfCancellationRequested();
             ValidateCloseInfo(closeInfo);
             InvokeNative(() => _native.CloseSession(_sessionId, closeInfo.ErrorCode, closeInfo.Reason));
+            _events.CloseSessionLocally(_sessionId);
             return default;
         }
 
@@ -116,6 +120,7 @@ namespace WebTransport
             }
             finally
             {
+                _events.CloseSessionLocally(_sessionId);
                 InvokeNative(() => _native.Release(_sessionId));
             }
 

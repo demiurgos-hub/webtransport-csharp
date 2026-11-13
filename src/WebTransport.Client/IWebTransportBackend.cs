@@ -17,6 +17,9 @@ namespace WebTransport
 
     public interface IWebTransportSessionBackend : IAsyncDisposable
     {
+        /// <summary>Completes with peer application close metadata, or faults on an unreasoned transport close.</summary>
+        Task<WebTransportCloseInfo> CloseCompletion { get; }
+
         ValueTask<IWebTransportStreamBackend> OpenBidirectionalStreamAsync(CancellationToken cancellationToken);
 
         ValueTask<IWebTransportStreamBackend> OpenUnidirectionalStreamAsync(CancellationToken cancellationToken);

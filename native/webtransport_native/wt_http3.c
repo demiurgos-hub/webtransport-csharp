@@ -4,6 +4,69 @@
 #include <stdlib.h>
 #include <string.h>
 
+static int wt_valid_utf8(const uint8_t* data, size_t length)
+{
+    for (size_t i = 0; i < length;) {
+        uint32_t c = data[i++];
+        if (c < 0x80) continue;
+        size_t count;
+        uint32_t minimum;
+        if (c >= 0xc2 && c <= 0xdf) { count = 1; minimum = 0x80; c &= 0x1f; }
+        else if (c >= 0xe0 && c <= 0xef) { count = 2; minimum = 0x800; c &= 0x0f; }
+        else if (c >= 0xf0 && c <= 0xf4) { count = 3; minimum = 0x10000; c &= 7; }
+        else return 0;
+        if (count > length - i) return 0;
+        while (count--) {
+            uint8_t next = data[i++];
+            if ((next & 0xc0) != 0x80) return 0;
+            c = (c << 6) | (next & 0x3f);
+        }
+        if (c < minimum || c > 0x10ffff || (c >= 0xd800 && c <= 0xdfff)) return 0;
+    }
+    return 1;
+}
+
+wt_status wt_http3_parse_close_capsules(wt_close_capsule_parser* parser, const uint8_t* data, size_t length)
+{
+    if (parser == NULL || (data == NULL && length != 0)) return WT_STATUS_INVALID_ARGUMENT;
+    while (length != 0 && !parser->closed) {
+        if (!parser->reading_payload) {
+            if (parser->header_length == sizeof(parser->header)) return WT_STATUS_PROTOCOL_ERROR;
+            parser->header[parser->header_length++] = *data++;
+            length--;
+            size_t offset = 0;
+            uint64_t type, payload_length;
+            if (wt_http3_decode_varint(parser->header, parser->header_length, &offset, &type) != WT_STATUS_OK ||
+                wt_http3_decode_varint(parser->header, parser->header_length, &offset, &payload_length) != WT_STATUS_OK) continue;
+            if (type == 0x2843 && (payload_length < 4 || payload_length > sizeof(parser->payload))) return WT_STATUS_PROTOCOL_ERROR;
+            parser->type = type;
+            parser->remaining = payload_length;
+            parser->payload_length = 0;
+            parser->header_length = 0;
+            parser->reading_payload = payload_length != 0;
+            continue;
+        }
+        size_t take = parser->remaining < length ? (size_t)parser->remaining : length;
+        if (parser->type == 0x2843) {
+            memcpy(parser->payload + parser->payload_length, data, take);
+            parser->payload_length += take;
+        }
+        data += take;
+        length -= take;
+        parser->remaining -= take;
+        if (parser->remaining == 0) {
+            parser->reading_payload = 0;
+            if (parser->type == 0x2843) {
+                if (!wt_valid_utf8(parser->payload + 4, parser->payload_length - 4)) return WT_STATUS_PROTOCOL_ERROR;
+                parser->error_code = ((uint32_t)parser->payload[0] << 24) | ((uint32_t)parser->payload[1] << 16) |
+                    ((uint32_t)parser->payload[2] << 8) | parser->payload[3];
+                parser->closed = 1;
+            }
+        }
+    }
+    return WT_STATUS_OK;
+}
+
 void wt_buffer_init(wt_buffer* buffer)
 {
     if (buffer == 0) {

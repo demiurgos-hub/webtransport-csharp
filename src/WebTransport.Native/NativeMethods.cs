@@ -6,7 +6,7 @@ namespace WebTransport.Native
     internal static class NativeMethods
     {
         internal const string LibraryName = "webtransport_native";
-        internal const uint ExpectedAbiVersion = 1;
+        internal const uint ExpectedAbiVersion = 2;
 
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "wt_get_abi_version")]
         internal static extern uint GetAbiVersion();

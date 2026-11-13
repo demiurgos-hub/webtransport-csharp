@@ -17,6 +17,10 @@ namespace WebTransport
             _backend = backend ?? throw new ArgumentNullException(nameof(backend));
         }
 
+        /// <summary>Completes with the peer's application close code and reason.</summary>
+        /// <remarks>Transport loss, local close and disposal fault this task. The first terminal result is retained.</remarks>
+        public Task<WebTransportCloseInfo> CloseCompletion => _backend.CloseCompletion;
+
         public async ValueTask<WebTransportStream> OpenBidirectionalStreamAsync(CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();

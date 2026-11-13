@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Runtime.InteropServices;
+using System.Text;
 using WebTransport.Native;
 
 namespace WebTransport
@@ -32,6 +34,7 @@ namespace WebTransport
         private readonly HashSet<ulong> _connectedSessions = new HashSet<ulong>();
         private readonly HashSet<ulong> _closedSessions = new HashSet<ulong>();
         private readonly HashSet<ulong> _closedStreams = new HashSet<ulong>();
+        private readonly Dictionary<ulong, TaskCompletionSource<WebTransportCloseInfo>> _sessionCloses = new Dictionary<ulong, TaskCompletionSource<WebTransportCloseInfo>>();
         private Task? _disposeTask;
         private Exception? _terminalException;
         private bool _disposed;
@@ -203,6 +206,31 @@ namespace WebTransport
             }
         }
 
+        public Task<WebTransportCloseInfo> GetSessionCloseCompletion(ulong sessionId)
+        {
+            lock (_gate)
+            {
+                var completion = GetSessionCloseLocked(sessionId);
+                if (_terminalException != null) completion.TrySetException(_terminalException);
+                return completion.Task;
+            }
+        }
+
+        private TaskCompletionSource<WebTransportCloseInfo> GetSessionCloseLocked(ulong sessionId)
+        {
+            if (!_sessionCloses.TryGetValue(sessionId, out var completion))
+            {
+                completion = new TaskCompletionSource<WebTransportCloseInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+                _sessionCloses.Add(sessionId, completion);
+            }
+            return completion;
+        }
+
+        public void CloseSessionLocally(ulong sessionId)
+        {
+            CompleteSession(sessionId, new ObjectDisposedException(nameof(WebTransportSession)));
+        }
+
         private async Task PumpAsync()
         {
             try
@@ -277,6 +305,23 @@ namespace WebTransport
                     CompleteSession(nativeEvent.SessionId, ToException(nativeEvent, "The WebTransport session closed."));
                     break;
 
+                case WebTransportNativeEventType.RemoteSessionClosed:
+                    if (nativeEvent.DataLength > 1024 || nativeEvent.ErrorCode > uint.MaxValue ||
+                        (nativeEvent.DataLength != 0 && nativeEvent.Data == IntPtr.Zero))
+                    {
+                        throw new WebTransportException(WebTransportErrorCode.ProtocolError, "Invalid peer close metadata.");
+                    }
+                    byte[] reasonBytes = new byte[(int)nativeEvent.DataLength];
+                    if (reasonBytes.Length != 0) Marshal.Copy(nativeEvent.Data, reasonBytes, 0, reasonBytes.Length);
+                    string reason = new UTF8Encoding(false, true).GetString(reasonBytes);
+                    lock (_gate)
+                    {
+                        _closedSessions.Add(nativeEvent.SessionId);
+                        GetSessionCloseLocked(nativeEvent.SessionId).TrySetResult(new WebTransportCloseInfo(nativeEvent.ErrorCode, reason));
+                    }
+                    CompleteSession(nativeEvent.SessionId, new WebTransportException(WebTransportErrorCode.TransportError, reason, nativeEvent.ErrorCode));
+                    break;
+
                 case WebTransportNativeEventType.ClientClosed:
                 case WebTransportNativeEventType.Error:
                     CompleteAll(ToException(nativeEvent, "The native WebTransport backend reported an error."));
@@ -296,6 +341,11 @@ namespace WebTransport
 
         private void CompleteSession(ulong sessionId, Exception exception)
         {
+            lock (_gate)
+            {
+                _closedSessions.Add(sessionId);
+                GetSessionCloseLocked(sessionId).TrySetException(exception);
+            }
             CompleteWaiters(_sessionConnectedWaiters, sessionId, exception);
             CompleteWaiters(_datagramWaiters, sessionId, exception);
             CompleteWaiters(_bidiStreamWaiters, sessionId, exception);
@@ -308,6 +358,7 @@ namespace WebTransport
             lock (_gate)
             {
                 _terminalException = exception;
+                foreach (var completion in _sessionCloses.Values) completion.TrySetException(exception);
                 DrainWaiters(_sessionConnectedWaiters, waiters);
                 DrainWaiters(_datagramWaiters, waiters);
                 DrainWaiters(_streamDataWaiters, waiters);

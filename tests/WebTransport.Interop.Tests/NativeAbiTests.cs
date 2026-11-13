@@ -7,7 +7,7 @@ namespace WebTransport.Interop.Tests;
 public sealed class NativeAbiTests
 {
     private const string NativeLibraryName = "webtransport_native";
-    private const uint ExpectedAbiVersion = 1;
+    private const uint ExpectedAbiVersion = 2;
 
     [Fact]
     public void NativeLibraryReportsExpectedAbiVersion()
