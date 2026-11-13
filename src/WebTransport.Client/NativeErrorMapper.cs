@@ -18,6 +18,9 @@ namespace WebTransport
                 case WebTransportNativeStatus.TransportError:
                     errorCode = WebTransportErrorCode.TransportError;
                     break;
+                case WebTransportNativeStatus.IdleTimeout:
+                    errorCode = WebTransportErrorCode.IdleTimeout;
+                    break;
                 case WebTransportNativeStatus.ProtocolError:
                     errorCode = WebTransportErrorCode.ProtocolError;
                     break;

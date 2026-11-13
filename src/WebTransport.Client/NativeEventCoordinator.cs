@@ -357,7 +357,8 @@ namespace WebTransport
             List<NativeEventWaiter> waiters = new List<NativeEventWaiter>();
             lock (_gate)
             {
-                _terminalException = exception;
+                _terminalException ??= exception;
+                exception = _terminalException;
                 foreach (var completion in _sessionCloses.Values) completion.TrySetException(exception);
                 DrainWaiters(_sessionConnectedWaiters, waiters);
                 DrainWaiters(_datagramWaiters, waiters);
@@ -528,6 +529,10 @@ namespace WebTransport
                 ? WebTransportNativeStatus.TransportError
                 : nativeEvent.Status;
 
+            if (status == WebTransportNativeStatus.IdleTimeout)
+                defaultMessage = "The WebTransport connection reached its negotiated idle timeout.";
+            if (nativeEvent.ErrorCode != 0)
+                defaultMessage += $" Native status: {status}; native error: 0x{nativeEvent.ErrorCode:X}.";
             WebTransportException mapped = NativeErrorMapper.Map(new WebTransportNativeException(status, defaultMessage));
             if (nativeEvent.ErrorCode == 0)
             {

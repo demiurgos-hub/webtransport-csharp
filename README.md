@@ -32,6 +32,8 @@ WebTransportDatagram datagram = await session.ReceiveDatagramAsync();
 
 `session.CloseCompletion` completes with the peer's `WebTransportCloseInfo` when its close capsule arrives. This preserves a code of zero and an empty reason as valid application metadata. Transport loss, an unreasoned request-stream close, local close, or disposal faults the task. Application streams are independent QUIC streams, so their EOF/reset can precede this metadata; observe session completion when classifying a peer close. The first terminal result remains available after disposal.
 
+`WebTransportClientOptions.IdleTimeout` defaults to 30 seconds of transport inactivity; this option does not enable keepalive. A server can send QUIC keepalive packets to retain quiet sessions. Native idle expiry faults with `WebTransportErrorCode.IdleTimeout`; the exception retains the platform status in `NativeErrorCode` and includes it in the diagnostic message.
+
 Custom `IWebTransportSessionBackend` implementations must provide this task. Version 0.3.0 uses native ABI 2 and rejects older native libraries instead of silently losing close metadata.
 
 ## Packages

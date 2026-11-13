@@ -4,10 +4,12 @@
 
 ### Added
 
+- Native QUIC idle expiry reports `WebTransportErrorCode.IdleTimeout`, with the original platform status retained in `NativeErrorCode` and the diagnostic message.
 - `WebTransportSession.CloseCompletion` preserves the peer's WebTransport application close code and UTF-8 reason, including normal code-zero closes. Transport loss and local disposal fault the task instead of inventing application metadata.
 
 ### Fixed
 
+- Preserve the first transport failure for late observers after subsequent shutdown events or disposal.
 - Parse fragmented close capsules across HTTP/3 DATA frames, bound close reasons to 1024 bytes, reject invalid UTF-8, and retain the first terminal result across subsequent stream shutdown.
 
 ### Changed

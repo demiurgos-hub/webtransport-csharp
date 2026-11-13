@@ -13,6 +13,8 @@ namespace WebTransport
         TlsError = 5,
         Cancelled = 6,
         Unsupported = 7,
-        NativeLibraryUnavailable = 8
+        NativeLibraryUnavailable = 8,
+        /// <summary>The transport reached its negotiated connection idle timeout.</summary>
+        IdleTimeout = 9
     }
 }

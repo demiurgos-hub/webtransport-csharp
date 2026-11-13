@@ -24,6 +24,28 @@ public sealed class LiveWebTransportTests
     }
 
     [Fact]
+    public async Task QuietConnectionReportsNativeIdleTimeout()
+    {
+        // The helper deliberately pins a server without keepalive so this
+        // exercises a real transport timeout, independent of application data.
+        await using GolemServerProcess? server = await StartGolemServerIfRequestedAsync();
+        if (server == null) return;
+        await using var client = new WebTransportClient(new WebTransportClientOptions
+        {
+            AllowUntrustedCertificates = true,
+            ConnectTimeout = TimeSpan.FromSeconds(5),
+            IdleTimeout = TimeSpan.FromSeconds(1)
+        });
+        await using WebTransportSession session = await client.ConnectAsync(new Uri(server.Url));
+        WebTransportException error = await Assert.ThrowsAsync<WebTransportException>(
+            () => session.CloseCompletion.WaitAsync(TimeSpan.FromSeconds(8)));
+        _output.WriteLine($"Idle failure: category={error.ErrorCode}, native=0x{error.NativeErrorCode:X}, message={error.Message}");
+        Assert.Equal(WebTransportErrorCode.IdleTimeout, error.ErrorCode);
+        Assert.Equal(0x80410005U, unchecked((uint)error.NativeErrorCode));
+        Assert.Contains("idle timeout", error.Message);
+    }
+
+    [Fact]
     public async Task ConnectsToConfiguredWebTransportServer()
     {
         string? url = Environment.GetEnvironmentVariable("WEBTRANSPORT_INTEROP_URL");

@@ -880,7 +880,8 @@ static QUIC_STATUS QUIC_API wt_msquic_connection_callback(
 
         case QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_TRANSPORT:
             native_event.type = WT_EVENT_ERROR;
-            native_event.status = WT_STATUS_TRANSPORT_ERROR;
+            native_event.status = event->SHUTDOWN_INITIATED_BY_TRANSPORT.Status == QUIC_STATUS_CONNECTION_IDLE
+                ? WT_STATUS_IDLE_TIMEOUT : WT_STATUS_TRANSPORT_ERROR;
             native_event.error_code = event->SHUTDOWN_INITIATED_BY_TRANSPORT.Status;
             break;
 

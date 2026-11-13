@@ -16,6 +16,7 @@ namespace WebTransport.Native
         Cancelled = -6,
         OutOfMemory = -7,
         Unsupported = -8,
+        IdleTimeout = -9,
         Unknown = -255
     }
 }

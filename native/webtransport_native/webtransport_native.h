@@ -28,6 +28,7 @@ typedef enum wt_status {
     WT_STATUS_CANCELLED = -6,
     WT_STATUS_OUT_OF_MEMORY = -7,
     WT_STATUS_UNSUPPORTED = -8,
+    WT_STATUS_IDLE_TIMEOUT = -9,
     WT_STATUS_UNKNOWN = -255
 } wt_status;
 

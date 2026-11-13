@@ -12,6 +12,28 @@ namespace WebTransport.Tests;
 public sealed class NativeEventCoordinatorTests
 {
     [Theory]
+    [InlineData(WebTransportNativeStatus.IdleTimeout, WebTransportErrorCode.IdleTimeout, 0xFFFFFFFF80410005UL, "idle timeout")]
+    [InlineData(WebTransportNativeStatus.TransportError, WebTransportErrorCode.TransportError, 123UL, "backend reported an error")]
+    public async Task NativeFailureRetainsCategoryCodeAndFirstCauseAfterCleanup(
+        WebTransportNativeStatus status, WebTransportErrorCode expected, ulong code, string message)
+    {
+        var source = new FakeEventSource();
+        await using var coordinator = new NativeEventCoordinator(source, TimeSpan.FromMilliseconds(1));
+        Task<WebTransportCloseInfo> completion = coordinator.GetSessionCloseCompletion(42);
+        source.Enqueue(new WebTransportNativeEvent { Type = WebTransportNativeEventType.Error, Status = status, ErrorCode = code });
+        WebTransportException error = await Assert.ThrowsAsync<WebTransportException>(
+            () => completion.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.Equal(expected, error.ErrorCode);
+        Assert.Equal(code, error.NativeErrorCode);
+        Assert.Contains(message, error.Message);
+        Assert.Contains($"0x{code:X}", error.Message);
+        await coordinator.DisposeAsync();
+        WebTransportException lateError = await Assert.ThrowsAsync<WebTransportException>(
+            () => coordinator.GetSessionCloseCompletion(43));
+        Assert.Same(error, lateError);
+    }
+
+    [Theory]
     [InlineData(0UL, "admission_denied")]
     [InlineData(17UL, "déploiement 拒否")]
     [InlineData(0UL, "")]

@@ -27,7 +27,8 @@ namespace WebTransport
         public TimeSpan ConnectTimeout { get; set; }
 
         /// <summary>
-        /// Maximum idle time before the native backend closes the connection.
+        /// Maximum transport idle time before the native backend closes the connection.
+        /// This does not enable keepalive; peer keepalive packets can prevent idle expiry.
         /// </summary>
         public TimeSpan IdleTimeout { get; set; }
 
