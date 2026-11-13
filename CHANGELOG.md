@@ -9,6 +9,7 @@
 
 ### Fixed
 
+- Emit deterministic Unity metadata for package folders and XML documentation, so first import does not create missing metadata or change the packaged file inventory.
 - Preserve the first transport failure for late observers after subsequent shutdown events or disposal.
 - Parse fragmented close capsules across HTTP/3 DATA frames, bound close reasons to 1024 bytes, reject invalid UTF-8, and retain the first terminal result across subsequent stream shutdown.
 

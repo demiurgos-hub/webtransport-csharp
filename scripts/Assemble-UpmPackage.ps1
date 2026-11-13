@@ -61,21 +61,18 @@ function Get-RelativePackagePath {
 }
 
 function Write-DefaultMeta {
-    param([string]$AssetPath)
+    param([string]$AssetPath, [switch]$Folder)
 
     $relativePath = Get-RelativePackagePath -AssetPath $AssetPath
     $guid = Get-UnityGuid -Path "io.demiurgos.webtransport/$relativePath"
     $metaPath = "$AssetPath.meta"
 
-    @"
-fileFormatVersion: 2
-guid: $guid
-DefaultImporter:
-  externalObjects: {}
-  userData:
-  assetBundleName:
-  assetBundleVariant:
-"@ | Set-Content -Path $metaPath -Encoding UTF8
+    $lines = @("fileFormatVersion: 2", "guid: $guid")
+    if ($Folder) {
+        $lines += "folderAsset: yes"
+    }
+    $lines += @("DefaultImporter:", "  externalObjects: {}", "  userData:", "  assetBundleName:", "  assetBundleVariant:")
+    $lines | Set-Content -Path $metaPath -Encoding UTF8
 }
 
 function Write-ManagedPluginMeta {
@@ -165,7 +162,9 @@ $platformData
 }
 
 function Write-MetaFiles {
-    $defaultExtensions = @(".asmdef", ".json", ".md")
+    foreach ($folder in (Get-ChildItem -Path $OutputDirectory -Recurse -Directory)) {
+        Write-DefaultMeta -AssetPath $folder.FullName -Folder
+    }
 
     foreach ($asset in (Get-ChildItem -Path $OutputDirectory -Recurse -File | Where-Object { $_.Extension -ne ".meta" })) {
         if ($asset.Extension -eq ".dll" -and $asset.FullName -like "*\Runtime\*") {
@@ -198,9 +197,7 @@ function Write-MetaFiles {
             continue
         }
 
-        if ($defaultExtensions -contains $asset.Extension) {
-            Write-DefaultMeta -AssetPath $asset.FullName
-        }
+        Write-DefaultMeta -AssetPath $asset.FullName
     }
 }
 
